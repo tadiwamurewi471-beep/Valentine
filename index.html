@@ -1,0 +1,221 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Be My Valentine?</title>
+  <style>
+    body{
+      text-align:center;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to bottom right, #ffe6f0, #ffffff);
+      margin:0;
+      height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+    }
+    .card{
+      background:#fff;
+      padding:28px 22px;
+      border-radius:24px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.12);
+      width:min(560px, 92vw);
+      position:relative;
+      z-index:2;
+    }
+    h1{ font-size: clamp(26px, 4vw, 40px); margin:0 0 10px; }
+    p{ margin:0 0 18px; opacity:.75; }
+    button{
+      font-size:20px;
+      padding:12px 25px;
+      margin:12px;
+      border-radius:30px;
+      border:none;
+      cursor:pointer;
+      transition: 0.2s;
+      min-width:130px;
+      font-weight:700;
+    }
+    #yesBtn{ background:#ff3399; color:white; }
+    #noBtn{ background:#e9e9e9; color:#333; }
+    #message{
+      font-size:22px;
+      color:#ff3399;
+      margin-top:16px;
+      min-height:26px;
+      font-weight:700;
+    }
+    canvas{
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      z-index:1;
+    }
+
+    /* Tap-to-unmute overlay */
+    .overlay{
+      position:fixed;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:rgba(0,0,0,.35);
+      z-index:5;
+      backdrop-filter: blur(2px);
+    }
+    .overlay .hint{
+      background:white;
+      padding:14px 18px;
+      border-radius:999px;
+      font-weight:800;
+      box-shadow: 0 12px 30px rgba(0,0,0,.25);
+    }
+
+    /* Hidden YouTube player */
+    #playerWrap{
+      position:fixed;
+      width:1px;
+      height:1px;
+      left:-9999px;
+      top:-9999px;
+      overflow:hidden;
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="confetti"></canvas>
+
+  <div id="playerWrap">
+    <div id="player"></div>
+  </div>
+
+  <div id="overlay" class="overlay">
+    <div class="hint">Tap anywhere for music 🔊</div>
+  </div>
+
+  <div class="card">
+    <h1>Will you be my Valentine? 💖</h1>
+    <p>Choose wisely… (the universe is watching)</p>
+
+    <button id="yesBtn">Yes ✅</button>
+    <button id="noBtn">No ❌</button>
+
+    <div id="message"></div>
+  </div>
+
+<script>
+  // --- Confetti (simple particle system) ---
+  const canvas = document.getElementById("confetti");
+  const ctx = canvas.getContext("2d");
+  let particles = [];
+
+  function resize(){
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  function launchConfetti(){
+    for (let i = 0; i < 180; i++){
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height * 0.25,
+        s: Math.random() * 8 + 4,
+        vx: Math.random() * 7 - 3.5,
+        vy: Math.random() * 6 + 2,
+        c: `hsl(${Math.random()*360}, 100%, 55%)`,
+        r: Math.random()*Math.PI
+      });
+    }
+    requestAnimationFrame(tick);
+  }
+
+  function tick(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    particles.forEach((p, idx) => {
+      p.vy += 0.12;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.r += 0.08;
+
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.r);
+      ctx.fillStyle = p.c;
+      ctx.fillRect(-p.s/2, -p.s/2, p.s, p.s*0.6);
+      ctx.restore();
+
+      if (p.y > canvas.height + 40) particles.splice(idx, 1);
+    });
+    if (particles.length) requestAnimationFrame(tick);
+  }
+
+  // --- Valentine buttons ---
+  const yesBtn = document.getElementById("yesBtn");
+  const noBtn  = document.getElementById("noBtn");
+  const message = document.getElementById("message");
+
+  function accept(){
+    message.textContent = "YAY!! You said YES!! 🎉💖";
+    launchConfetti();
+    yesBtn.disabled = true;
+    noBtn.disabled = true;
+  }
+
+  yesBtn.onclick = accept;
+
+  noBtn.onclick = () => {
+    noBtn.textContent = "Yes ✅";
+    noBtn.style.background = "#ff3399";
+    noBtn.style.color = "white";
+    message.textContent = "Nice try 😌";
+    launchConfetti();
+    noBtn.onclick = accept;
+  };
+
+  // --- YouTube autoplay (muted) + tap to unmute ---
+  // Official video ID (from YouTube link): ZhIsAZO5gl0
+  const YT_VIDEO_ID = "ZhIsAZO5gl0";
+  let player;
+
+  function onYouTubeIframeAPIReady() {
+    player = new YT.Player('player', {
+      videoId: YT_VIDEO_ID,
+      playerVars: {
+        autoplay: 1,
+        controls: 0,
+        loop: 1,
+        playlist: YT_VIDEO_ID,
+        mute: 1
+      },
+      events: {
+        onReady: (e) => e.target.playVideo()
+      }
+    });
+  }
+
+  // Load the IFrame API
+  const tag = document.createElement('script');
+  tag.src = "https://www.youtube.com/iframe_api";
+  document.head.appendChild(tag);
+
+  // Tap anywhere to unmute + hide overlay
+  const overlay = document.getElementById("overlay");
+  overlay.addEventListener("click", () => {
+    overlay.style.display = "none";
+    if (player && player.unMute) {
+      player.unMute();
+      player.setVolume(80);
+      player.playVideo();
+    }
+  });
+
+  // Expose callback globally (required by YouTube API)
+  window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
+</script>
+
+</body>
+</html>
